@@ -19,7 +19,7 @@ var checkmyrepoCmd = &cobra.Command{
 
 func cmdRun(cmd *cobra.Command, args []string) {
 	println("in the check command")
-	repo, err := git.PlainOpen(".")
+	repo, err := git.PlainOpen("/Users/ayusharora/projects/Food-Ordering-Business-Project-")
 	if err != nil {
 		cmd.PrintErrln("Error:this is not a git repo")
 	}
@@ -33,36 +33,37 @@ func cmdRun(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to get commit history: %v", err)
 	}
 	authorChanges := make(map[string]int)
+	var totalChanges int
 	err = commitIter.ForEach(func(c *object.Commit) error {
-		fmt.Printf("Commit: %s\nAuthor: %s <%s>\nDate: %s\nMessage: %s\n\n",
-			c.Hash.String(),
-			c.Author.Name,
-			c.Author.Email,
-			c.Author.When,
-			c.Message,
-		)
+		// fmt.Printf("Commit: %s\nAuthor: %s <%s>\nDate: %s\nMessage: %s\n\n",
+		// 	c.Hash.String(),
+		// 	c.Author.Name,
+		// 	c.Author.Email,
+		// 	c.Author.When,
+		// 	c.Message,
+		// )
 
 		stats, err := c.Stats()
 		if err != nil {
 			log.Fatalf("Failed to get Stats: %v", err)
 		}
-		totalChanges := 0
+		changes := 0
 		for _, stat := range stats {
-			totalChanges += stat.Addition + stat.Deletion
+			changes += stat.Addition + stat.Deletion
 		}
 		author := fmt.Sprintf("%s <%s>", c.Author.Name, c.Author.Email)
-		authorChanges[author] += totalChanges
+		authorChanges[author] += changes
+		totalChanges += changes
+
 		return nil
 	})
 	if err != nil {
 		log.Fatalf("Error while iterating commits: %v", err)
 	}
 
-	var totalChanges int
-
-	for _, change := range authorChanges {
-		totalChanges += change
-	}
+	// for _, change := range authorChanges {
+	// 	totalChanges += change
+	// }
 
 	type AuthorStat struct {
 		Author string
