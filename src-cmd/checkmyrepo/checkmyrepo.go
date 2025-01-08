@@ -12,14 +12,14 @@ import (
 )
 
 var checkmyrepoCmd = &cobra.Command{
-	Use:   "checkmyrepo",
+	Use:   "check",
 	Short: "command to check the code contribution of all developers",
 	Run:   cmdRun,
 }
 
 func cmdRun(cmd *cobra.Command, args []string) {
 	println("in the check command")
-	repo, err := git.PlainOpen("/Users/ayusharora/projects/Food-Ordering-Business-Project-")
+	repo, err := git.PlainOpen(".")
 	if err != nil {
 		cmd.PrintErrln("Error:this is not a git repo")
 	}
@@ -61,10 +61,6 @@ func cmdRun(cmd *cobra.Command, args []string) {
 		log.Fatalf("Error while iterating commits: %v", err)
 	}
 
-	// for _, change := range authorChanges {
-	// 	totalChanges += change
-	// }
-
 	type AuthorStat struct {
 		Author string
 		Equity float64
@@ -77,7 +73,7 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	sort.Slice(stats, func(i, j int) bool {
 		return stats[i].Equity > stats[j].Equity
 	})
-	fmt.Println("Contribooters of this Repo:")
+	fmt.Println("Developers of this Repo:")
 	for _, stat := range stats {
 		redValue := uint8((1 - (stat.Equity / 100)) * 255)
 		greenValue := uint8((stat.Equity / 100) * 255)
