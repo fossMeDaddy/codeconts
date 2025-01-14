@@ -106,7 +106,7 @@ func cmdRun(cmd *cobra.Command, args []string) {
 		}
 		changes := 0
 		for _, stat := range stats {
-			changes += stat.Addition + stat.Deletion
+			changes += stat.Addition
 		}
 		author := fmt.Sprintf("%s <%s>", c.Author.Name, c.Author.Email)
 		authorChanges[author] += changes
