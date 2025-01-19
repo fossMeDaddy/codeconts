@@ -51,6 +51,7 @@ func getRepo(repoURL string) (*git.Repository, string, error) {
 		repoURL = fmt.Sprintf("https://github.com/%s/%s", parts[0], parts[1])
 	}
 	tempDir, err := os.MkdirTemp("", "repo-*")
+	fmt.Println(tempDir)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create a temp directory:%v", err)
 	}
@@ -84,49 +85,95 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("Failed to get HEAD reference: %v", err)
 	}
-
-	commitIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
+	commit, err := repo.CommitObject(ref.Hash())
 	if err != nil {
-		log.Fatalf("Failed to get commit history: %v", err)
+		log.Fatalf("Failed to get HEAD commit: %v", err)
 	}
-	authorChanges := make(map[string]int)
-	var totalChanges int
-	err = commitIter.ForEach(func(c *object.Commit) error {
-		// fmt.Printf("Commit: %s\nAuthor: %s <%s>\nDate: %s\nMessage: %s\n\n",
-		// 	c.Hash.String(),
-		// 	c.Author.Name,
-		// 	c.Author.Email,
-		// 	c.Author.When,
-		// 	c.Message,
-		// )
-
-		stats, err := c.Stats()
+	fileIter, err := commit.Files()
+	if err != nil {
+		log.Fatalf("Failed to get the File Iter: %v", err)
+	}
+	authorLines := make(map[string]int)
+	var totalLines int
+	err = fileIter.ForEach(func(f *object.File) error {
+		blame, err := git.Blame(commit, f.Name)
 		if err != nil {
-			log.Fatalf("Failed to get Stats: %v", err)
+			return nil
 		}
-		changes := 0
-		for _, stat := range stats {
-			changes += stat.Addition
+		for _, line := range blame.Lines {
+			author := fmt.Sprintf("%s <%s>", line.AuthorName, line.Author)
+			if len(strings.TrimSpace(line.Text)) > 0 {
+				authorLines[author] += 1
+				totalLines += 1
+			}
 		}
-		author := fmt.Sprintf("%s <%s>", c.Author.Name, c.Author.Email)
-		authorChanges[author] += changes
-		totalChanges += changes
-
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("Error while iterating commits: %v", err)
+		log.Fatalf("Failed to iterate over files: %v", err)
 	}
-
 	type AuthorStat struct {
 		Author string
 		Equity float64
 	}
 	var stats []AuthorStat
-	for author, changes := range authorChanges {
-		equity := (float64(changes) / float64(totalChanges)) * 100
-		stats = append(stats, AuthorStat{Author: author, Equity: equity})
+	for author, currentLines := range authorLines {
+		currentEquity := float64(0)
+		if totalLines > 0 {
+			currentEquity = (float64(currentLines) / float64(totalLines)) * 100
+		}
+		stats = append(stats, AuthorStat{
+			Author: author,
+			Equity: currentEquity,
+		})
 	}
+
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].Equity > stats[j].Equity
+	})
+
+	// commitIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
+	// if err != nil {
+	// 	log.Fatalf("Failed to get commit history: %v", err)
+	// }
+	// authorChanges := make(map[string]int)
+	// var totalChanges int
+	// err = commitIter.ForEach(func(c *object.Commit) error {
+	// 	// fmt.Printf("Commit: %s\nAuthor: %s <%s>\nDate: %s\nMessage: %s\n\n",
+	// 	// 	c.Hash.String(),
+	// 	// 	c.Author.Name,
+	// 	// 	c.Author.Email,
+	// 	// 	c.Author.When,
+	// 	// 	c.Message,
+	// 	// )
+
+	// 	stats, err := c.Stats()
+	// 	if err != nil {
+	// 		log.Fatalf("Failed to get Stats: %v", err)
+	// 	}
+	// 	changes := 0
+	// 	for _, stat := range stats {
+	// 		changes += stat.Addition
+	// 	}
+	// 	author := fmt.Sprintf("%s <%s>", c.Author.Name, c.Author.Email)
+	// 	authorChanges[author] += changes
+	// 	totalChanges += changes
+
+	// 	return nil
+	// })
+	// if err != nil {
+	// 	log.Fatalf("Error while iterating commits: %v", err)
+	// }
+
+	// type AuthorStat struct {
+	// 	Author string
+	// 	Equity float64
+	// }
+	// var stats []AuthorStat
+	// for author, changes := range authorChanges {
+	// 	equity := (float64(changes) / float64(totalChanges)) * 100
+	// 	stats = append(stats, AuthorStat{Author: author, Equity: equity})
+	// }
 	sort.Slice(stats, func(i, j int) bool {
 		return stats[i].Equity > stats[j].Equity
 	})
