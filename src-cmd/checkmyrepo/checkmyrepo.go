@@ -50,8 +50,7 @@ func getRepo(repoURL string) (*git.Repository, string, error) {
 		}
 		repoURL = fmt.Sprintf("https://github.com/%s/%s", parts[0], parts[1])
 	}
-	tempDir, err := os.MkdirTemp("", "repo-*")
-	fmt.Println(tempDir)
+	tempDir, err := os.MkdirTemp(".", "repo-*")
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create a temp directory:%v", err)
 	}
