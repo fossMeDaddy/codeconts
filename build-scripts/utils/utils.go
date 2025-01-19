@@ -10,23 +10,23 @@ import (
 )
 
 var BIN_ARCH_NAME_MAP = map[string][]string{
-	"linux-amd64": []string{
+	"linux-amd64": {
 		"x86_64-unknown-linux-gnu",
 		"x86_64-unknown-linux-gnux32",
 		"x86_64-unknown-linux-musl",
 		"x86_64-unknown-linux-ohos",
 	},
-	"linux-arm64": []string{
+	"linux-arm64": {
 		"aarch64-linux-android",
 		"aarch64-unknown-linux-gnu",
 		"aarch64-unknown-linux-musl",
 		"aarch64-unknown-linux-ohos",
 	},
 
-	"darwin-arm64": []string{"aarch64-apple-darwin"},
-	"darwin-amd64": []string{"x86_64-apple-darwin"},
+	"darwin-arm64": {"aarch64-apple-darwin"},
+	"darwin-amd64": {"x86_64-apple-darwin"},
 
-	"windows-arm64": []string{
+	"windows-arm64": {
 		"aarch64-pc-windows-msvc",
 		"i586-pc-windows-msvc",
 		"i686-pc-windows-gnu",
