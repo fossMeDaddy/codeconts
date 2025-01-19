@@ -9,6 +9,35 @@ import (
 	"sync"
 )
 
+var BIN_ARCH_NAME_MAP = map[string][]string{
+	"linux-amd64": []string{
+		"x86_64-unknown-linux-gnu",
+		"x86_64-unknown-linux-gnux32",
+		"x86_64-unknown-linux-musl",
+		"x86_64-unknown-linux-ohos",
+	},
+	"linux-arm64": []string{
+		"aarch64-linux-android",
+		"aarch64-unknown-linux-gnu",
+		"aarch64-unknown-linux-musl",
+		"aarch64-unknown-linux-ohos",
+	},
+
+	"darwin-arm64": []string{"aarch64-apple-darwin"},
+	"darwin-amd64": []string{"x86_64-apple-darwin"},
+
+	"windows-arm64": []string{
+		"aarch64-pc-windows-msvc",
+		"i586-pc-windows-msvc",
+		"i686-pc-windows-gnu",
+		"i686-pc-windows-gnullvm",
+		"i686-pc-windows-msvc",
+		"x86_64-pc-windows-gnu",
+		"x86_64-pc-windows-gnullvm",
+		"x86_64-pc-windows-msvc",
+	},
+}
+
 func GetCurrentVersion() string {
 	r, err := os.ReadFile("version")
 	if err != nil {
@@ -39,13 +68,14 @@ func Build(goos string, goarch string, version string) {
 	GOOS := strings.ToLower(goos)
 	GOARCH := strings.ToLower(goarch)
 
-	outFile := path.Join("bin", fmt.Sprintf("codeconts-%s-%s", GOOS, GOARCH))
+	name := fmt.Sprintf("%s-%s", GOOS, GOARCH)
+	outFile := path.Join("bin", name)
 
 	cmd := exec.Command(
 		"go",
 		"build",
 		"-ldflags",
-		fmt.Sprintf("-X 'github.com/fossMeDaddy/codeconts/globals.Version=%s'", version),
+		fmt.Sprintf("-X 'github.com/fossMeDaddy/codeconts/globals.Version=%s' -s -w", version),
 		"-o",
 		outFile,
 		"main.go",
@@ -58,6 +88,18 @@ func Build(goos string, goarch string, version string) {
 		panic("error occured while running 'go build'")
 	}
 
+	contents_b, readFileErr := os.ReadFile(outFile)
+	if readFileErr != nil {
+		panic(fmt.Sprintf("error occured while reading file %s", outFile))
+	}
+	for _, target := range BIN_ARCH_NAME_MAP[name] {
+		targetFilePath := path.Join("bin", target)
+		if err := os.WriteFile(targetFilePath, contents_b, 0666); err != nil {
+			fmt.Println("WARNING: error occured while writing", targetFilePath, err)
+		}
+	}
+	os.Remove(outFile)
+
 	fmt.Println("Built binary for", goos, goarch)
 	fmt.Println()
 }
@@ -65,8 +107,7 @@ func Build(goos string, goarch string, version string) {
 func BuildAllTargets(version string) {
 	var wg sync.WaitGroup
 
-	wg.Add(8)
-
+	wg.Add(3)
 	go (func() {
 		defer wg.Done()
 		Build("linux", "arm64", version)
@@ -80,6 +121,7 @@ func BuildAllTargets(version string) {
 		Build("linux", "386", version)
 	})()
 
+	wg.Add(2)
 	go (func() {
 		defer wg.Done()
 		Build("darwin", "arm64", version)
@@ -89,6 +131,7 @@ func BuildAllTargets(version string) {
 		Build("darwin", "amd64", version)
 	})()
 
+	wg.Add(2)
 	go (func() {
 		defer wg.Done()
 		Build("windows", "amd64", version)
@@ -96,11 +139,6 @@ func BuildAllTargets(version string) {
 	go (func() {
 		defer wg.Done()
 		Build("windows", "386", version)
-	})()
-
-	go (func() {
-		defer wg.Done()
-		Build("freebsd", "amd64", version)
 	})()
 
 	wg.Wait()
